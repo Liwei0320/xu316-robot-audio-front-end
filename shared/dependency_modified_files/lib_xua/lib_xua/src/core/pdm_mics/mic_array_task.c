@@ -1,0 +1,58 @@
+// Copyright 2022-2026 XMOS LIMITED.
+// This Software is subject to the terms of the XMOS Public Licence: Version 1.
+
+#include "xua_conf.h"
+#if (XUA_NUM_PDM_MICS > 0)
+
+
+#include "xua_pdm_mic.h"
+#include "mic_array.h"
+
+#include <xcore/channel.h>
+#include <xcore/port.h>
+
+void mic_array_task(chanend_t c_mic_to_audio, unsigned *channel_map){
+    while(1) {
+        xua_user_pdm_init(channel_map);
+        /*This channel transaction serves to synchronise the start of
+        audiohub with mic_array so we always consume samples */
+        unsigned mic_samp_rate = chan_in_word(c_mic_to_audio);
+        unsigned mClk = MCLK_48, pdmClk = 3072000;
+
+        if (((MCLK_441) % mic_samp_rate) == 0)
+        {
+            // Note: Ensure the selected microphone supports this PDM clock frequency.
+            // Refer to the microphone datasheet for the allowed fClk range.
+            mClk = MCLK_441;
+            pdmClk = 2822400;
+        }
+
+    #if (XUA_PDM_MIC_USE_DDR)
+        pdm_rx_resources_t pdm_res = PDM_RX_RESOURCES_DDR(
+            PORT_MCLK_IN,
+            PORT_PDM_CLK,
+            PORT_PDM_DATA,
+            mClk,
+            pdmClk,
+            XS1_CLKBLK_1,
+            XS1_CLKBLK_2);
+    #else
+        pdm_rx_resources_t pdm_res = PDM_RX_RESOURCES_SDR(
+            PORT_MCLK_IN,
+            PORT_PDM_CLK,
+            PORT_PDM_DATA,
+            mClk,
+            pdmClk,
+            XS1_CLKBLK_1);
+    #endif
+        mic_array_init(&pdm_res, channel_map, mic_samp_rate);
+#if XUA_PDM_MIC_SAMPLE_FALLING_EDGE
+        port_set_sample_falling_edge(PORT_PDM_DATA);
+#endif
+
+        /* Start endless loop */
+        mic_array_start(c_mic_to_audio);
+    }
+}
+
+#endif // #if (XUA_NUM_PDM_MICS > 0)

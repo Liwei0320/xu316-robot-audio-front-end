@@ -1,0 +1,36 @@
+# XMOS/CMake build outputs
+**/.build/
+**/build/
+**/build_*/
+**/CMakeFiles/
+**/CMakeCache.txt
+**/cmake_install.cmake
+**/Makefile
+**/*.ppb
+**/*.map
+**/*.lst
+**/*.log
+**/*.tmp
+
+# Keep dependency repositories and unreviewed firmware out of the archive
+/lib_*/
+*.xe
+!variants/*/bin/*.xe
+*.wav
+!variants/*/test_evidence/*.wav
+*.bin
+
+# Python cache and recordings made by the host tools
+**/__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Obsolete flash artifact; it does not match the archived variants
+**/flash/sq66_beamformer_factory.bin
+
+# Editor and Windows metadata
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini

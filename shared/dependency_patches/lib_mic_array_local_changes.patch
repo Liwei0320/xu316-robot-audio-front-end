@@ -1,0 +1,42 @@
+diff --git a/lib_mic_array/src/mic_array_setup.c b/lib_mic_array/src/mic_array_setup.c
+index 44ac620..d8a732d 100644
+--- a/lib_mic_array/src/mic_array_setup.c
++++ b/lib_mic_array/src/mic_array_setup.c
+@@ -43,6 +43,12 @@ void mic_array_resources_configure(
+   port_set_clock(pdm_res->p_pdm_mics, is_ddr? pdm_res->clock_b
+                                             : pdm_res->clock_a);
+   port_clear_buffer(pdm_res->p_pdm_mics);
++
++#ifdef __XS3A__
++  /* The overlapping P8D input adds enough load to require a stronger clock pad. */
++  asm volatile ("setc res[%0], %1"
++                :: "r" (pdm_res->p_pdm_clk), "r" (0x200006));
++#endif
+ }
+ 
+ static inline
+diff --git a/lib_mic_array/src/mic_array_task_internal.hpp b/lib_mic_array/src/mic_array_task_internal.hpp
+index 33386bd..152244b 100644
+--- a/lib_mic_array/src/mic_array_task_internal.hpp
++++ b/lib_mic_array/src/mic_array_task_internal.hpp
+@@ -6,8 +6,19 @@
+ #include "mic_array.h"
+ #include "mic_array/etc/filters_default.h"
+ 
++#if defined(MIC_ARRAY_CONFIG_NUM_DECIMATOR_SUBTASKS) && \
++    (MIC_ARRAY_CONFIG_NUM_DECIMATOR_SUBTASKS > 1)
++#include "parallel_decimator.hpp"
++template <unsigned MIC_COUNT>
++using TTwoStageDecimator = mic_array::ParallelTwoStageDecimator<
++    MIC_COUNT, 2, MIC_ARRAY_48K_STAGE_2_TAP_COUNT>;
++#else
++template <unsigned MIC_COUNT>
++using TTwoStageDecimator = mic_array::TwoStageDecimator<MIC_COUNT>;
++#endif
++
+ using TMicArray =  mic_array::MicArray<MIC_ARRAY_CONFIG_MIC_COUNT,
+-                        mic_array::TwoStageDecimator<MIC_ARRAY_CONFIG_MIC_COUNT>,
++                        TTwoStageDecimator<MIC_ARRAY_CONFIG_MIC_COUNT>,
+                         mic_array::StandardPdmRxService<MIC_ARRAY_CONFIG_MIC_IN_COUNT,
+                                                         MIC_ARRAY_CONFIG_MIC_COUNT>,
+                         // std::conditional uses USE_DCOE to determine which

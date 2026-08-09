@@ -1,0 +1,24 @@
+// Copyright 2015-2026 XMOS LIMITED.
+// This Software is subject to the terms of the XMOS Public Licence: Version 1.
+#ifndef MIC_ARRAY_CONF_H_
+#define MIC_ARRAY_CONF_H_
+
+#include "xua_conf_full.h"
+
+#if XUA_NUM_PDM_MICS > 0
+/* PDM mics configuration */
+
+#define MIC_ARRAY_CONFIG_MIC_COUNT          XUA_NUM_PDM_MICS
+#define MIC_ARRAY_CONFIG_MIC_IN_COUNT       XUA_NUM_PDM_MICS_IN
+
+#define MIC_ARRAY_CONFIG_USE_PDM_ISR        XUA_PDM_MIC_USE_PDM_ISR
+
+#ifdef XUA_PDM_MIC_NUM_DECIMATOR_SUBTASKS
+#define MIC_ARRAY_CONFIG_NUM_DECIMATOR_SUBTASKS XUA_PDM_MIC_NUM_DECIMATOR_SUBTASKS
+#else
+#define MIC_ARRAY_CONFIG_NUM_DECIMATOR_SUBTASKS 1
+#endif
+
+#endif /* XUA_NUM_PDM_MICS > 0 */
+
+#endif /* MIC_ARRAY_CONF_H_ */

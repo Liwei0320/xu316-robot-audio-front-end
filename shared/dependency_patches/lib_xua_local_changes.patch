@@ -1,0 +1,162 @@
+diff --git a/lib_xua/api/xua_conf_default.h b/lib_xua/api/xua_conf_default.h
+index 09f45b93..645a3f4b 100644
+--- a/lib_xua/api/xua_conf_default.h
++++ b/lib_xua/api/xua_conf_default.h
+@@ -1904,7 +1904,7 @@ enum USBEndpointNumber_Out
+ 
+ #define _NEED_MCLK_FOR_ADAT_TX (XUA_ADAT_TX_EN)
+ #define _NEED_MCLK_FOR_SPDIF_TX (XUA_SPDIF_TX_EN)
+-#define _NEED_MCLK_FOR_USB (XUA_USB_EN)
++#define _NEED_MCLK_FOR_USB (XUA_USB_EN && !XUA_FB_USE_REF_CLOCK)
+ 
+ /* Need mclk */
+ #define MCLK_REQUIRED ( \
+diff --git a/lib_xua/src/core/audiohub/xua_audiohub.xc b/lib_xua/src/core/audiohub/xua_audiohub.xc
+index 17ed96e7..00824951 100755
+--- a/lib_xua/src/core/audiohub/xua_audiohub.xc
++++ b/lib_xua/src/core/audiohub/xua_audiohub.xc
+@@ -181,6 +181,30 @@ static inline int HandleSampleClock(int frameCount, buffered _XUA_CLK_DIR port:3
+ 
+ }
+ 
++#if defined(SQ66_PDM_ALWAYS_ON_CAPTURE) && (SQ66_PDM_ALWAYS_ON_CAPTURE == 1) && \
++    (NUM_USB_CHAN_OUT == 0) && (XUA_LOW_POWER_NON_STREAMING == 0) && \
++    (MIN_FREQ == MAX_FREQ) && (XUA_NUM_PDM_MICS > 0)
++static inline unsigned consume_stream_event_without_restarting_audio(
++    chanend ?c_aud,
++    unsigned command)
++{
++    if(command == XUA_AUD_SET_AUDIO_START)
++    {
++        inuint(c_aud); /* DSD mode; unused by this capture-only application. */
++        inuint(c_aud); /* Output resolution; there are no output channels. */
++        outct(c_aud, XS1_CT_END);
++        return XUA_AUDCTL_NO_COMMAND;
++    }
++    else if(command == XUA_AUD_SET_AUDIO_STOP)
++    {
++        outct(c_aud, XS1_CT_END);
++        return XUA_AUDCTL_NO_COMMAND;
++    }
++
++    return command;
++}
++#endif
++
+ #pragma unsafe arrays
+ unsigned static AudioHub_MainLoop(chanend ?c_aud, chanend ?c_spd_out
+ #if (XUA_ADAT_TX_EN)
+@@ -255,6 +279,12 @@ unsigned static AudioHub_MainLoop(chanend ?c_aud, chanend ?c_spd_out
+     /* Get initial samples for first I2S output */
+     unsigned command = DoSampleTransfer(c_aud, readBuffNo, underflowWord);
+ 
++#if defined(SQ66_PDM_ALWAYS_ON_CAPTURE) && (SQ66_PDM_ALWAYS_ON_CAPTURE == 1) && \
++    (NUM_USB_CHAN_OUT == 0) && (XUA_LOW_POWER_NON_STREAMING == 0) && \
++    (MIN_FREQ == MAX_FREQ) && (XUA_NUM_PDM_MICS > 0)
++    command = consume_stream_event_without_restarting_audio(c_aud, command);
++#endif
++
+     // Reinitialise user state before entering the main loop
+     UserBufferManagementInit(curSamFreq);
+ 
+@@ -544,6 +574,12 @@ unsigned static AudioHub_MainLoop(chanend ?c_aud, chanend ?c_spd_out
+                     else
+                         command = DoSampleTransfer(c_aud, 0, underflowWord);
+ 
++#if defined(SQ66_PDM_ALWAYS_ON_CAPTURE) && (SQ66_PDM_ALWAYS_ON_CAPTURE == 1) && \
++    (NUM_USB_CHAN_OUT == 0) && (XUA_LOW_POWER_NON_STREAMING == 0) && \
++    (MIN_FREQ == MAX_FREQ) && (XUA_NUM_PDM_MICS > 0)
++                    command = consume_stream_event_without_restarting_audio(c_aud, command);
++#endif
++
+                     if(command != XUA_AUDCTL_NO_COMMAND)
+                     {
+                         return command;
+diff --git a/lib_xua/src/core/buffer/decouple/decouple.xc b/lib_xua/src/core/buffer/decouple/decouple.xc
+index c49daad1..f78ab51f 100644
+--- a/lib_xua/src/core/buffer/decouple/decouple.xc
++++ b/lib_xua/src/core/buffer/decouple/decouple.xc
+@@ -668,6 +668,7 @@ static void check_and_signal_stream_event_to_audio(chanend c_mix_out, unsigned d
+ {
+     /* We do OR logic so audio hub is sent info about whether *ANY* stream is active or not */
+     g_any_stream_active_current = g_input_stream_active || g_output_stream_active;
++
+     if(g_any_stream_active_current != g_any_stream_active_old)
+     {
+         /* Forward stream active command to audio if needed - this will cause the audio loop to break */
+diff --git a/lib_xua/src/core/main.xc b/lib_xua/src/core/main.xc
+index d3e6e766..a1496459 100644
+--- a/lib_xua/src/core/main.xc
++++ b/lib_xua/src/core/main.xc
+@@ -128,8 +128,10 @@ on tile[XUA_AUDIO_IO_TILE_NUM] :  in port p_mclk_in                 = PORT_MCLK_
+ on tile[XUA_XUD_TILE_NUM] : in port p_mclk_in_usb                   = PORT_MCLK_IN_USB;
+ #endif
+ 
+-#if XUA_USB_EN
++#if XUA_USB_EN && !XUA_FB_USE_REF_CLOCK
+ on tile[XUA_XUD_TILE_NUM] : in port p_for_mclk_count                = PORT_MCLK_COUNT;
++#else
++#define p_for_mclk_count null
+ #endif
+ 
+ #if (XUA_SPDIF_TX_EN)
+@@ -555,9 +557,12 @@ int main()
+             {
+                 XUA_USER_FUNCTION_CALL_PRE_BUFFER
+ 
++#if (XUA_FB_USE_REF_CLOCK == 0)
+                 unsigned x;
++#endif
+                 thread_speed();
+ 
++#if (XUA_FB_USE_REF_CLOCK == 0)
+                 /* Attach mclk count port to mclk clock-block (for feedback) */
+                 //set_port_clock(p_for_mclk_count, clk_audio_mclk);
+ #if(SECOND_MCLK_REQUIRED)
+@@ -572,6 +577,7 @@ int main()
+                 asm("setclk res[%0], %1"::"r"(p_for_mclk_count), "r"(x));
+                 /* This clock block is started in audiohub in case we first need to connect other logic
+                    e.g. digital Tx to it before starting */
++#endif
+ #endif
+                 /* Endpoint & audio buffering cores - buffers all EP's other than 0 */
+                 XUA_Buffer(
+diff --git a/lib_xua/src/core/pdm_mics/mic_array_conf.h b/lib_xua/src/core/pdm_mics/mic_array_conf.h
+index f28e00c9..ed06e1e7 100644
+--- a/lib_xua/src/core/pdm_mics/mic_array_conf.h
++++ b/lib_xua/src/core/pdm_mics/mic_array_conf.h
+@@ -13,6 +13,12 @@
+ 
+ #define MIC_ARRAY_CONFIG_USE_PDM_ISR        XUA_PDM_MIC_USE_PDM_ISR
+ 
++#ifdef XUA_PDM_MIC_NUM_DECIMATOR_SUBTASKS
++#define MIC_ARRAY_CONFIG_NUM_DECIMATOR_SUBTASKS XUA_PDM_MIC_NUM_DECIMATOR_SUBTASKS
++#else
++#define MIC_ARRAY_CONFIG_NUM_DECIMATOR_SUBTASKS 1
++#endif
++
+ #endif /* XUA_NUM_PDM_MICS > 0 */
+ 
+ #endif /* MIC_ARRAY_CONF_H_ */
+diff --git a/lib_xua/src/core/pdm_mics/mic_array_task.c b/lib_xua/src/core/pdm_mics/mic_array_task.c
+index e312e605..1f711f0f 100644
+--- a/lib_xua/src/core/pdm_mics/mic_array_task.c
++++ b/lib_xua/src/core/pdm_mics/mic_array_task.c
+@@ -9,6 +9,7 @@
+ #include "mic_array.h"
+ 
+ #include <xcore/channel.h>
++#include <xcore/port.h>
+ 
+ void mic_array_task(chanend_t c_mic_to_audio, unsigned *channel_map){
+     while(1) {
+@@ -45,6 +46,9 @@ void mic_array_task(chanend_t c_mic_to_audio, unsigned *channel_map){
+             XS1_CLKBLK_1);
+     #endif
+         mic_array_init(&pdm_res, channel_map, mic_samp_rate);
++#if XUA_PDM_MIC_SAMPLE_FALLING_EDGE
++        port_set_sample_falling_edge(PORT_PDM_DATA);
++#endif
+ 
+         /* Start endless loop */
+         mic_array_start(c_mic_to_audio);

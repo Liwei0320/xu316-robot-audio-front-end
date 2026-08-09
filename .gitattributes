@@ -1,0 +1,27 @@
+* text=auto
+
+*.c       text eol=lf
+*.h       text eol=lf
+*.hpp     text eol=lf
+*.xc      text eol=lf
+*.xn      text eol=lf
+*.xscope  text eol=lf
+*.cmake   text eol=lf
+CMakeLists.txt text eol=lf
+*.py      text eol=lf
+# A unified-diff context line can consist only of its required marker space.
+*.patch   text eol=lf whitespace=-blank-at-eol
+*.md      text eol=lf
+*.txt     text eol=lf
+*.csv     text eol=lf
+*.gitignore text eol=lf
+*.gitattributes text eol=lf
+*.cmd     text eol=crlf
+
+*.xe      binary
+*.wav     binary
+*.bin     binary
+*.pdf     binary
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
