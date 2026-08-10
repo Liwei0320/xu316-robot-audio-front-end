@@ -22,11 +22,12 @@ xrun -l
 .\variants\single_mic_hardware_validation\run_xtag.cmd U8NUL5P2
 .\variants\dual_mic_verified\run_xtag.cmd U8NUL5P2
 .\variants\four_mic_raw\run_xtag.cmd U8NUL5P2
+.\variants\four_mic_beamformer_broadside\run_xtag.cmd U8NUL5P2
 ```
 
 一次只能运行其中一个。`xrun` 窗口必须保持打开；要换版本先按 `Ctrl+C` 结束旧进程。
 
-这些命令只是加载到 RAM，不是永久烧录。当前三版均设置 `XUA_DFU_EN=0` 和 `XUA_QUAD_SPI_FLASH=0`，没有完成 QSPI 型号、SPI spec、启动镜像及掉电恢复验证，因此不得用 `xflash` 或 CH347 写入。
+这些命令只是加载到 RAM，不是永久烧录。当前四版均设置 `XUA_DFU_EN=0` 和 `XUA_QUAD_SPI_FLASH=0`，没有完成 QSPI 型号、SPI spec、启动镜像及掉电恢复验证，因此不得用 `xflash` 或 CH347 写入。
 
 ## 2. 手动录音
 
@@ -50,7 +51,13 @@ python .\variants\dual_mic_verified\host_tools\record_dual_mic.py -t 10 -o C:\xm
 python .\variants\four_mic_raw\host_tools\record_four_mic.py -t 20 -o C:\xmos_work\four_new.wav
 ```
 
-脚本选择 Windows WASAPI 下名称含 `XU316` 或 `Beamformer` 的第一个合格输入设备，并等待最多 30 秒。录音时只保留当前这一块 XU316 音频设备，确认旧的 `xrun` 已退出，避免误选另一块同名设备。若没有找到设备，先检查 `xrun` 是否仍在运行、主板 Type-C 是否为数据线、以及 Windows 设备管理器是否出现 USB Audio 输入端点。
+四麦宽侧波束版录制 2 通道，左右都是同一个处理结果：
+
+```powershell
+python .\variants\four_mic_beamformer_broadside\host_tools\record_beamformer.py -t 20 -o C:\xmos_work\beamformer_new.wav
+```
+
+前三个历史脚本选择 Windows WASAPI 下名称含 `XU316` 或 `Beamformer` 的第一个合格输入；波束版脚本只匹配名称含 `4Mic Broadside Beam` 的 2 通道输入。脚本最多等待 30 秒。录音时只保留当前这一块 XU316 音频设备，确认旧的 `xrun` 已退出，避免误选另一块同名设备。若没有找到设备，先检查 `xrun` 是否仍在运行、主板 Type-C 是否为数据线、以及 Windows 设备管理器是否出现 USB Audio 输入端点。
 
 ## 3. 重建源码工作区
 
@@ -112,8 +119,9 @@ xmake -C build -j
 
 - `cmake`、`xmake` 无错误，且资源报告没有线程或内存溢出。
 - 通过 XTAG `xrun` 启动后，Windows 能以预期产品名和通道数枚举。
-- 逐个靠近或轻敲麦克风，确认 DATA0～DATA3 与 USB 通道映射正确。
-- 保存 48 kHz、16-bit WAV，分别检查每个通道的人声、底噪和削波。
+- 对原始采集版逐个靠近或轻敲麦克风，确认 DATA0～DATA3 与 USB 通道映射正确。
+- 对波束版先确认左右输出基本一致，再分别录制正面和侧面人声，检查有效声音、底噪、削波和方向性；真实麦克风坐标未标定前不能宣称已转向具体角度。
+- 保存 48 kHz、16-bit WAV，按各版本通道定义检查人声、底噪和削波。
 - 至少进行一次长时间连续录音测试，再决定是否把新构建标为“已验证”。
 
 新的 `.xe` 可能因路径、工具链或构建元数据不同而无法复现归档固件的 SHA256；不能仅凭哈希不同判断功能源码不同。

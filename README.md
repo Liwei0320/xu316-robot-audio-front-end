@@ -1,14 +1,14 @@
 # SQ66 XU316 麦克风固件版本归档
 
-本仓库归档了 2026-08-09 在自制 XU316 主板上测试过的单麦、双麦和四麦程序。每个版本均保存应用源码、预编译 `.xe`、Windows 录音脚本和对应测试录音。
+本仓库归档了 2026-08-09 至 2026-08-10 在自制 XU316 主板上测试过的单麦、双麦、四麦原始采集和四麦宽侧波束程序。每个版本均保存应用源码、预编译 `.xe`、Windows 录音脚本和对应测试录音。
 
 ## 重要结论
 
-- 三个版本目前都只能通过 XTAG4 和 `xrun` 加载到 XU316 的 RAM；停止 `xrun` 或断电后程序消失。
+- 四个版本目前都只能通过 XTAG4 和 `xrun` 加载到 XU316 的 RAM；停止 `xrun` 或断电后程序消失。
 - 当前配置关闭了 DFU 和 QSPI Flash。不要对这些 `.xe` 执行 `xflash`，也不要用 CH347 直接写入 `.xe`。
-- 三个版本都是麦克风采集/硬件验证程序，不是波束成形、AEC、DoA 或量产固件。
+- 前三个版本是麦克风采集/硬件验证程序；第四个版本实现固定零延时宽侧 delay-and-sum，但仍不是 AEC、DoA、自适应波束或量产固件。
 - “单麦版”是只物理连接 DATA0 的历史验证状态，固件内部仍有两个 PDM/USB 输入通道；详细说明见该版本 README。
-- 原工程中 2026-07-27 的旧 `sq66_beamformer_factory.bin` 与本仓库三个版本均不一致，已明确排除在归档之外。
+- 原工程中 2026-07-27 的旧 `sq66_beamformer_factory.bin` 与本仓库四个版本均不一致，已明确排除在归档之外。
 
 ## 版本一览
 
@@ -17,8 +17,9 @@
 | `variants/single_mic_hardware_validation` | 测试时仅接 DATA0 | 2 通道；DATA0、DATA1 各自 64 倍 | DATA0 人声录音通过；源码由历史记录高可信恢复 | `app_single_mic_data0_verified_20260809.xe` |
 | `variants/dual_mic_verified` | DATA0、DATA1 | 2 个独立通道，各 64 倍 | 双麦 10 秒录音通过 | `app_dual_mic_verified_20260809.xe` |
 | `variants/four_mic_raw` | DATA0～DATA3 | 4 个独立通道，各 64 倍 | 四麦 20 秒原始采集通过；近讲有削波 | `app_four_mic_raw_64x_20260809.xe` |
+| `variants/four_mic_beamformer_broadside` | DATA0～DATA3 | 2 通道；同一宽侧波束复制到左右 | USB 枚举和 20 秒静音基线通过；人声方向性待标定 | `app_four_mic_beamformer_broadside_20260810.xe` |
 
-共同音频配置为 48 kHz、16-bit、UAC1、PDM 下降沿采样。四麦版使用两个并行 PDM 抽取子任务。
+共同音频配置为 48 kHz、16-bit、UAC1、PDM 下降沿采样。两个四麦版本使用两个并行 PDM 抽取子任务。
 
 ## 快速运行
 
@@ -29,10 +30,10 @@ cd C:\xmos_work\sq66_firmware_versions
 xrun -l
 ```
 
-以当前使用的 XTAG4 适配器 `U8NUL5P2` 为例，运行四麦版本：
+以当前使用的 XTAG4 适配器 `U8NUL5P2` 为例，运行四麦宽侧波束版本：
 
 ```powershell
-.\variants\four_mic_raw\run_xtag.cmd U8NUL5P2
+.\variants\four_mic_beamformer_broadside\run_xtag.cmd U8NUL5P2
 ```
 
 保持该窗口运行。在第二个终端安装录音依赖并录制：
@@ -40,7 +41,7 @@ xrun -l
 ```powershell
 cd C:\xmos_work\sq66_firmware_versions
 python -m pip install -r .\requirements.txt
-python .\variants\four_mic_raw\host_tools\record_four_mic.py -t 10 -o C:\xmos_work\four_mic_new.wav
+python .\variants\four_mic_beamformer_broadside\host_tools\record_beamformer.py -t 20 -o C:\xmos_work\beamformer_new.wav
 ```
 
 切换固件前先在运行 `xrun` 的窗口按 `Ctrl+C`，否则会出现 `device is in use by another process`。
@@ -67,7 +68,7 @@ SHA256SUMS.csv             全仓库文件校验清单
 
 - 固件和测试录音的 SHA256 均记录在各版本 README 和根目录 `SHA256SUMS.csv` 中；该清单覆盖除 `.git` 和清单自身之外的全部归档文件。
 - 单麦历史 `.xe` 是硬件验证基准；其源码虽有完整历史文本和严格时间链支持，但尚未重新构建并证明能逐字节复现该 `.xe`。
-- 双麦源码是测试通过时保存的完整快照；四麦源码是生成已测试四麦固件时的完整快照。
+- 双麦源码是测试通过时保存的完整快照；四麦原始版源码是生成已测试四麦采集固件时的完整快照；波束版源码已重新构建并完成 USB 与静音基线测试。
 - `test_evidence` 中包含真实现场人声录音；本地归档可以保留，推送到远程或公开分享前应先检查隐私并按需移除。
 - 新工具链构建的 `.xe` 可能因构建元数据不同而哈希不同，必须重新做 USB 枚举、通道映射、录音和长稳测试。
 - XMOS 第三方源码继续受其原许可证约束；本仓库只记录本板应用、必要补丁和恢复信息。
