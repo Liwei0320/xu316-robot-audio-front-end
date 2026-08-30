@@ -1,6 +1,6 @@
 # SQ66 XU316 四麦波束成形音频板
 
-SQ66 XU316 是自主设计和验证的四路 PDM 麦克风音频前端，面向 RK3588、PC 和其他 USB Host 提供板端音频处理。硬件原理图、PCB、XU316 应用固件、QSPI 启动和四麦录音验证均在本项目中完成。当前主版本同时输出两路波束结果与四路原始麦克风数据，便于直接使用、算法调试和后续升级。
+SQ66 XU316 是面向机器人语音交互自主设计和验证的四路 PDM 麦克风音频前端，可通过 USB 连接 RK3588 机器人主控、PC 和其他 USB Host。硬件原理图、PCB、XU316 应用层固件、QSPI 启动适配和四麦录音验证均在本项目中完成；底层 USB 音频与 PDM 采集能力参考 XMOS 官方开源库开发。当前主版本同时输出两路波束结果与四路原始麦克风数据，便于机器人直接录音、算法调试和后续升级。
 
 <p align="center">
   <img src="hardware/photos/xu316-four-microphone-system-test.jpg" alt="XU316 四麦克风系统测试图" width="760">
@@ -13,6 +13,20 @@ SQ66 XU316 是自主设计和验证的四路 PDM 麦克风音频前端，面向 
 - USB 通道 1/2 为固定宽侧 delay-and-sum 波束结果，通道 3～6 为四路原始 PCM。
 - W25Q16JW 1.8 V QSPI Flash 已通过烧录、回读和断电冷启动验证；正常运行不需要持续连接 XTAG4。
 - 固件源码、预编译 `.xe`、录音工具、嘉立创 EDA Pro 硬件工程、PCB/3D 图、实物与测试证据统一归档。
+
+## 机器人应用定位
+
+本项目用于为具身智能机器人、服务机器人和移动机器人提供独立的四麦语音采集前端。XU316 在音频板上完成 PDM 时钟、四路采集、抽取和基础波束处理，再通过 Type-C 将音频交给 RK3588，避免机器人主控直接处理高速 PDM 数据。
+
+| 机器人功能 | 使用的音频数据 | 当前状态 |
+|---|---|---|
+| 语音唤醒与语音识别 | USB 通道 1/2 波束结果 | 已具备稳定录音数据链路，唤醒与识别算法运行在 RK3588 |
+| 多麦调试与算法训练 | USB 通道 3～6 四路原始 PCM | 已支持同步输出，便于保存数据集和离线分析 |
+| 声源方向判断 | 四路原始 PCM | 保留数据接口，DoA 算法待加入 |
+| 机器人远场拾音 | 波束、降噪、AGC、VAD | 当前完成固定宽侧波束，其余算法待开发 |
+| 语音交互回声消除 | 麦克风输入 + 扬声器参考信号 | 当前未集成播放参考通道和 AEC |
+
+机器人运行时只需将音频板 Type-C 接到 RK3588 USB Host。QSPI 冷启动成功后无需连接 XTAG4，Linux 侧可通过 ALSA 读取六通道音频，并将波束通道送入唤醒、ASR、对话和运动控制流程。
 
 ## 系统数据流
 
@@ -27,6 +41,28 @@ USB Type-C ─> PC / RK3588 (USB Audio capture)
 W25Q16JW  ─> QSPI cold boot
 XTAG4     ─> development, RAM run and Flash programming
 ```
+
+在机器人中的建议链路：
+
+```text
+Four-microphone array
+        │
+        v
+SQ66 XU316 audio front end
+        │  USB Audio: beam CH1/2 + raw CH3..6
+        v
+RK3588 robot controller
+        ├─> wake word / ASR
+        ├─> voice dialogue
+        ├─> sound-source analysis
+        └─> robot command and motion planning
+```
+
+## 官方开源基础
+
+本项目不是从零重写 XMOS 底层驱动。固件参考并使用 XMOS 官方公开的 `lib_xua`、`lib_mic_array`、`lib_xud`、`lib_xcore_math` 等软件库，在此基础上完成 XU316 QF60 自制硬件适配、并行四麦抽取、USB 六通道路由、波束处理和 QSPI 启动验证。
+
+依赖库的版本、完整 commit、官方仓库地址及本地修改补丁记录在 [`docs/DEPENDENCIES.md`](docs/DEPENDENCIES.md)。这样既说明了官方开源基础，也能区分本项目自主完成的硬件设计、应用集成和整板调试工作。
 
 ## 六通道定义
 
@@ -145,4 +181,4 @@ SHA256SUMS.csv             仓库文件 SHA-256 清单
 
 ## 许可与说明
 
-本项目自主完成板级硬件设计、应用固件集成和整板验证。所使用的 XMOS 工具链与依赖库继续受其原许可证约束；硬件照片、测试数据与本板应用代码用于本项目研发归档。
+本项目自主完成板级硬件设计、应用固件集成和整板验证。固件参考 XMOS 官方开源软件库开发，相关依赖继续受其原许可证约束；硬件照片、测试数据与本板应用代码用于本项目研发归档。
