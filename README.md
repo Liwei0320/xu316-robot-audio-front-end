@@ -3,7 +3,7 @@
 基于 XMOS XU316 的四路 PDM 麦克风前端，面向 RK3588、PC 和其他 USB Host 提供板端音频处理。当前主版本同时输出两路波束结果与四路原始麦克风数据，便于直接使用、算法调试和后续升级。
 
 <p align="center">
-  <img src="hardware/photos/four-mic-test-setup.jpg" alt="SQ66 XU316 核心板与四麦线阵测试系统" width="760">
+  <img src="hardware/photos/xu316-four-microphone-system-test.jpg" alt="XU316 四麦克风系统测试图" width="760">
 </p>
 
 ## 当前能力
@@ -68,7 +68,7 @@ XTAG4     ─> development, RAM run and Flash programming
 完整测试条件、结果和限制见 [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md)。
 
 <p align="center">
-  <img src="docs/images/testing/macos-six-channel-recording-complete.png" alt="macOS 六通道 48 kHz 枚举与录音验证" width="900">
+  <img src="docs/images/testing/macos-six-channel-enumeration-recording-complete.png" alt="macOS 六通道枚举与录音完成截图" width="900">
 </p>
 
 ## 硬件资料
@@ -76,15 +76,15 @@ XTAG4     ─> development, RAM run and Flash programming
 | 路径 | 内容 |
 |---|---|
 | `hardware/source/xu316-hardware-20260830.epro` | 嘉立创 EDA Pro 工程，内含 2 张原理图和 1 个 PCB |
-| `hardware/renders/xu316-board-3d-top.png` | 主板 3D 顶视图 |
-| `hardware/renders/xu316-pcb-layout-top.png` | PCB 顶层布局图 |
-| `hardware/photos/xu316-core-prototype.jpg` | 新板实物与飞线验证状态 |
-| `hardware/photos/four-mic-test-setup.jpg` | 核心板、转接板和四麦线阵完整测试连接 |
+| `hardware/renders/xu316-board-3d-render.png` | XU316 主板 3D 效果图 |
+| `hardware/renders/xu316-board-pcb-layout.png` | XU316 主板 PCB 布局图 |
+| `hardware/photos/xu316-board-bench-test.jpg` | XU316 主板实测图，展示通电和调试飞线状态 |
+| `hardware/photos/xu316-four-microphone-system-test.jpg` | 四麦克风系统测试图，展示主板、转接板和线阵连接 |
 
 更多说明见 [`hardware/README.md`](hardware/README.md)。
 
 <p align="center">
-  <img src="hardware/renders/xu316-board-3d-top.png" alt="SQ66 XU316 主板 3D 图" width="900">
+  <img src="hardware/renders/xu316-board-3d-render.png" alt="XU316 主板 3D 效果图" width="900">
 </p>
 
 ## 固件版本

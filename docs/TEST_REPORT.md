@@ -30,8 +30,8 @@
 
 四路麦克风均能采集到人声，完整录音无削波。测试截图：
 
-- `images/testing/macos-six-channel-recording-complete.png`：设备枚举、10 秒录音完成及 `ffprobe` 格式确认。
-- `images/testing/macos-six-channel-recording-progress.png`：录音过程中的实时输出。
+- `images/testing/macos-six-channel-enumeration-recording-complete.png`：设备枚举、10 秒录音完成及 `ffprobe` 格式确认。
+- `images/testing/macos-six-channel-recording-in-progress.png`：录音过程中的实时输出。
 
 ## 方向测试
 

@@ -7,10 +7,10 @@
 | 文件 | 说明 |
 |---|---|
 | `source/xu316-hardware-20260830.epro` | 可由嘉立创 EDA Pro 导入的工程归档；压缩包内包含 `2` 个 `.esch` 原理图页面、`1` 个 `.epcb` PCB 文件及工程元数据 |
-| `renders/xu316-board-3d-top.png` | 装配后的主板 3D 顶视图 |
-| `renders/xu316-pcb-layout-top.png` | PCB 顶层布局与走线预览 |
-| `photos/xu316-core-prototype.jpg` | XU316 核心板实物和调试飞线 |
-| `photos/four-mic-test-setup.jpg` | 核心板、转接板与四麦线阵连接全景 |
+| `renders/xu316-board-3d-render.png` | 原“3D图”：装配后的 XU316 主板 3D 效果图 |
+| `renders/xu316-board-pcb-layout.png` | 原“PCB图”：XU316 主板 PCB 布局与走线预览 |
+| `photos/xu316-board-bench-test.jpg` | 原“实测图”：主板通电、USB 接线和调试飞线实测状态 |
+| `photos/xu316-four-microphone-system-test.jpg` | 原“测试图”：核心板、转接板与四麦线阵完整测试连接 |
 
 ## 关键硬件
 
