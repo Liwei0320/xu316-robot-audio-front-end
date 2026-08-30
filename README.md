@@ -1,74 +1,152 @@
-# SQ66 XU316 麦克风固件版本归档
+# SQ66 XU316 四麦波束成形音频板
 
-本仓库归档了 2026-08-09 至 2026-08-10 在自制 XU316 主板上测试过的单麦、双麦、四麦原始采集和四麦宽侧波束程序。每个版本均保存应用源码、预编译 `.xe`、Windows 录音脚本和对应测试录音。
+基于 XMOS XU316 的四路 PDM 麦克风前端，面向 RK3588、PC 和其他 USB Host 提供板端音频处理。当前主版本同时输出两路波束结果与四路原始麦克风数据，便于直接使用、算法调试和后续升级。
 
-## 重要结论
+> 项目定位参考 [Seeed Studio reSpeaker Flex](https://wiki.seeedstudio.com/cn/respeaker_flex_introduction/) 的“分体式核心板 + 四麦阵列 + USB 音频”形态，但本项目是独立设计与验证，不代表 Seeed Studio 或 XMOS 官方产品，也不宣称与 reSpeaker Flex 的完整算法能力等价。
 
-- 四个版本目前都只能通过 XTAG4 和 `xrun` 加载到 XU316 的 RAM；停止 `xrun` 或断电后程序消失。
-- 当前配置关闭了 DFU 和 QSPI Flash。不要对这些 `.xe` 执行 `xflash`，也不要用 CH347 直接写入 `.xe`。
-- 前三个版本是麦克风采集/硬件验证程序；第四个版本实现固定零延时宽侧 delay-and-sum，但仍不是 AEC、DoA、自适应波束或量产固件。
-- “单麦版”是只物理连接 DATA0 的历史验证状态，固件内部仍有两个 PDM/USB 输入通道；详细说明见该版本 README。
-- 原工程中 2026-07-27 的旧 `sq66_beamformer_factory.bin` 与本仓库四个版本均不一致，已明确排除在归档之外。
+<p align="center">
+  <img src="hardware/photos/four-mic-test-setup.jpg" alt="SQ66 XU316 核心板与四麦线阵测试系统" width="760">
+</p>
 
-## 版本一览
+## 当前能力
 
-| 目录 | 硬件输入 | USB 输出 | 验证状态 | 推荐固件 |
-|---|---|---|---|---|
-| `variants/single_mic_hardware_validation` | 测试时仅接 DATA0 | 2 通道；DATA0、DATA1 各自 64 倍 | DATA0 人声录音通过；源码由历史记录高可信恢复 | `app_single_mic_data0_verified_20260809.xe` |
-| `variants/dual_mic_verified` | DATA0、DATA1 | 2 个独立通道，各 64 倍 | 双麦 10 秒录音通过 | `app_dual_mic_verified_20260809.xe` |
-| `variants/four_mic_raw` | DATA0～DATA3 | 4 个独立通道，各 64 倍 | 四麦 20 秒原始采集通过；近讲有削波 | `app_four_mic_raw_64x_20260809.xe` |
-| `variants/four_mic_beamformer_broadside` | DATA0～DATA3 | 2 通道；同一宽侧波束复制到左右 | USB 枚举和 20 秒静音基线通过；人声方向性待标定 | `app_four_mic_beamformer_broadside_20260810.xe` |
+- XMOS XU316 主控，四路 PDM 麦克风输入（DATA0～DATA3）。
+- 48 kHz、16-bit、6 通道 USB 录音设备，Windows 与 macOS 已完成枚举和录音测试。
+- USB 通道 1/2 为固定宽侧 delay-and-sum 波束结果，通道 3～6 为四路原始 PCM。
+- W25Q16JW 1.8 V QSPI Flash 已通过烧录、回读和断电冷启动验证；正常运行不需要持续连接 XTAG4。
+- 固件源码、预编译 `.xe`、录音工具、嘉立创 EDA Pro 硬件工程、PCB/3D 图、实物与测试证据统一归档。
 
-共同音频配置为 48 kHz、16-bit、UAC1、PDM 下降沿采样。两个四麦版本使用两个并行 PDM 抽取子任务。
+## 系统数据流
 
-## 快速运行
+```text
+4 x PDM MEMS microphones
+  DATA0 ─┐
+  DATA1 ─┼─> XU316 PDM decimation ─┬─> fixed broadside delay-and-sum ─> USB CH1/CH2
+  DATA2 ─┼─────────────────────────└─> raw PCM monitor ───────────────> USB CH3..CH6
+  DATA3 ─┘
 
-先打开“XMOS XTC Tools 15.3.1 Command Prompt”，确认 XTAG4 和主板的 USB 数据线都已连接，然后执行：
+USB Type-C ─> PC / RK3588 (USB Audio capture)
+W25Q16JW  ─> QSPI cold boot
+XTAG4     ─> development, RAM run and Flash programming
+```
+
+## 六通道定义
+
+| USB 通道 | 内容 | 用途 |
+|---|---|---|
+| 1 | 四麦宽侧波束结果 | 主处理音频 |
+| 2 | 通道 1 的副本 | 双声道软件兼容 |
+| 3 | DATA0 原始 PCM | 调试/二次算法 |
+| 4 | DATA1 原始 PCM | 调试/二次算法 |
+| 5 | DATA2 原始 PCM | 调试/二次算法 |
+| 6 | DATA3 原始 PCM | 调试/二次算法 |
+
+当前波束算法是固定零延时、等权求和的宽侧波束。它可体现四麦相干叠加，并保留原始通道用于离线分析；它尚不包含 AEC、DoA、自适应波束、VAD、AGC、降噪或去混响。
+
+## 与 reSpeaker Flex 的功能对标
+
+| 项目 | SQ66 XU316 当前版本 | reSpeaker Flex 官方定位 |
+|---|---|---|
+| 架构 | 自研核心板 + 外接四麦阵列 | 核心板与阵列板通过 FPC 分离 |
+| 麦克风 | 4 路 PDM，当前按线阵验证 | 4 麦环形或 4 麦线形阵列 |
+| 主处理器 | XMOS XU316 | XMOS XVF3800 |
+| 主机接口 | USB 音频，面向 PC/RK3588 | USB UAC 2.0 与 I2S |
+| USB 输出 | 6 通道：2 路波束 + 4 路原始 | 官方提供 2 通道/6 通道固件 |
+| 波束成形 | 固定宽侧 delay-and-sum，原始通道可监控 | 多通道波束成形，线阵支持前向拾音 |
+| 完整语音前端 | 尚未实现 | 官方标称 AEC、AGC、DoA、VAD、降噪、去混响 |
+| 固件升级 | XTAG4 + QSPI；已验证冷启动 | USB DFU，并支持配置保持 |
+| 播放输出 | 当前版本未集成扬声器链路 | 板载功放与 AUX 输出 |
+| 可开发性 | 硬件工程、应用源码和逐通道数据均归档 | 官方固件、Python SDK 和产品化接口 |
+
+本项目当前的核心价值是：在自研硬件上打通“四路 PDM → XU316 板端处理 → USB 六通道 → RK3588/PC”的完整链路，并同时暴露处理后与处理前数据。与 reSpeaker Flex 相比，硬件与数据链路已经具备可继续研发的基础，但完整远场语音算法仍是后续工作。
+
+## 已完成验证
+
+- USB 标识：`XU316 4Mic Beam + Raw 6Ch 1`，VID/PID `20B1:0335`。
+- 音频格式：48 kHz、16-bit、6 通道；四麦人声录音通过，无削波。
+- Flash：W25Q16JW，JEDEC ID `EF 60 15`，QE 已开启。
+- 以 10 MHz QSPI 烧录后连续三次回读前 64 KiB，均为 0 字节差异。
+- 拔除 XTAG4、仅连接主板 Type-C，设备可以从 QSPI 冷启动并枚举。
+- 左、右、前、后录音对比中，前向为最强；后向约比前向低 2.44 dB。该结果只能证明当前固定宽波束在运行，不能视为量产级指向性指标。
+
+完整测试条件、结果和限制见 [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md)。
+
+<p align="center">
+  <img src="docs/images/testing/macos-six-channel-recording-complete.png" alt="macOS 六通道 48 kHz 枚举与录音验证" width="900">
+</p>
+
+## 硬件资料
+
+| 路径 | 内容 |
+|---|---|
+| `hardware/source/xu316-hardware-20260830.epro` | 嘉立创 EDA Pro 工程，内含 2 张原理图和 1 个 PCB |
+| `hardware/renders/xu316-board-3d-top.png` | 主板 3D 顶视图 |
+| `hardware/renders/xu316-pcb-layout-top.png` | PCB 顶层布局图 |
+| `hardware/photos/xu316-core-prototype.jpg` | 新板实物与飞线验证状态 |
+| `hardware/photos/four-mic-test-setup.jpg` | 核心板、转接板和四麦线阵完整测试连接 |
+
+更多说明见 [`hardware/README.md`](hardware/README.md)。
+
+<p align="center">
+  <img src="hardware/renders/xu316-board-3d-top.png" alt="SQ66 XU316 主板 3D 图" width="900">
+</p>
+
+## 固件版本
+
+| 目录 | 输入 | USB 输出 | 状态 |
+|---|---|---|---|
+| `variants/single_mic_hardware_validation` | DATA0 | 2 通道 | 单麦硬件验证通过 |
+| `variants/dual_mic_verified` | DATA0、DATA1 | 2 通道 | 双麦录音通过 |
+| `variants/four_mic_raw` | DATA0～DATA3 | 4 路原始 PCM | 四麦原始采集通过 |
+| `variants/four_mic_beamformer_broadside` | DATA0～DATA3 | 2 路相同波束 | 固定宽侧波束验证通过 |
+| `variants/six_channel_beamformer_raw_monitor` | DATA0～DATA3 | 2 路波束 + 4 路原始 | 当前推荐版本；USB、录音和 QSPI 冷启动通过 |
+
+推荐固件：`variants/six_channel_beamformer_raw_monitor/bin/app_six_channel_beam_raw_20260811.xe`
+
+SHA-256：`0347F5A8B7EDE4942FD38320193A1D2F6BE11B8810A8450FCA33276DEF2E2B89`
+
+## 运行与录音
+
+开发阶段可使用 XTAG4 从 RAM 运行：
 
 ```powershell
 cd C:\xmos_work\sq66_firmware_versions
-xrun -l
+.\variants\six_channel_beamformer_raw_monitor\run_xtag.cmd U8NUL5P2
 ```
 
-以当前使用的 XTAG4 适配器 `U8NUL5P2` 为例，运行四麦宽侧波束版本：
-
-```powershell
-.\variants\four_mic_beamformer_broadside\run_xtag.cmd U8NUL5P2
-```
-
-保持该窗口运行。在第二个终端安装录音依赖并录制：
+保持该终端运行，在另一个 PowerShell 中录制六通道音频：
 
 ```powershell
 cd C:\xmos_work\sq66_firmware_versions
 python -m pip install -r .\requirements.txt
-python .\variants\four_mic_beamformer_broadside\host_tools\record_beamformer.py -t 20 -o C:\xmos_work\beamformer_new.wav
+python .\variants\six_channel_beamformer_raw_monitor\host_tools\record_six_channel_beamformer.py `
+  -t 30 -o C:\xmos_work\six_channel_voice_30s.wav
 ```
 
-切换固件前先在运行 `xrun` 的窗口按 `Ctrl+C`，否则会出现 `device is in use by another process`。
-录音脚本会选择第一个匹配名称的 WASAPI 输入；测试时只保留当前这一块 XU316 音频设备，避免误选同名端点。
+Flash 烧录完成并验证冷启动后，实际使用时只需连接主板 Type-C 到 RK3588 或 PC，不需要连接 XTAG4。烧录前必须确认 Flash 型号、1.8 V I/O、电源、BOOT_SEL 和 QSPI 引脚与本硬件版本一致。
 
-## 目录说明
+## 仓库结构
 
 ```text
-variants/                  单麦、双麦、四麦的自包含应用快照
+hardware/                  原理图/PCB 源工程、渲染图和实物照片
+variants/                  单麦、双麦、四麦、波束与六通道固件快照
   <version>/source/        XMOS 应用源码
-  <version>/bin/           对应的已归档 XE
-  <version>/host_tools/    Windows WASAPI 录音脚本
-  <version>/test_evidence/ 当时的测试 WAV
-shared/dependency_patches/ lib_xua、lib_mic_array 本地修改补丁
-shared/dependency_modified_files/ 修改后的完整文件备份
-shared/project_scaffold/   重建工作区所需的最小根 CMake 文件
-docs/                      依赖锁、恢复步骤和来源说明
-SHA256SUMS.csv             全仓库文件校验清单
+  <version>/bin/           已验证的 XE
+  <version>/host_tools/    Windows 录音工具
+  <version>/test_evidence/ 对应测试音频
+shared/                    依赖补丁、修改文件和工程骨架
+docs/                      依赖、恢复步骤、硬件测试与截图
+SHA256SUMS.csv             仓库文件 SHA-256 清单
 ```
 
-依赖库没有作为嵌套 Git 仓库直接提交，避免产生不可移植的 gitlink。完整依赖版本和恢复方法分别见 `docs/DEPENDENCIES.md` 与 `docs/RESTORE_AND_RUN.md`。
+## 限制与路线图
 
-## 完整性与限制
+- 对麦克风间距、增益和相位进行统一标定，建立可复现的消声/半消声方向图测试。
+- 根据真实线阵几何加入可控延时与指向角，升级为可转向波束。
+- 增加 AEC、噪声抑制、AGC、VAD、DoA 和去混响，并进行算力与延迟评估。
+- 为 RK3588 补充稳定的 ALSA 设备绑定、通道路由和长期录音脚本。
+- 增加 USB DFU 和安全恢复流程，减少量产阶段对 XTAG4 的依赖。
 
-- 固件和测试录音的 SHA256 均记录在各版本 README 和根目录 `SHA256SUMS.csv` 中；该清单覆盖除 `.git` 和清单自身之外的全部归档文件。
-- 单麦历史 `.xe` 是硬件验证基准；其源码虽有完整历史文本和严格时间链支持，但尚未重新构建并证明能逐字节复现该 `.xe`。
-- 双麦源码是测试通过时保存的完整快照；四麦原始版源码是生成已测试四麦采集固件时的完整快照；波束版源码已重新构建并完成 USB 与静音基线测试。
-- `test_evidence` 中包含真实现场人声录音；本地归档可以保留，推送到远程或公开分享前应先检查隐私并按需移除。
-- 新工具链构建的 `.xe` 可能因构建元数据不同而哈希不同，必须重新做 USB 枚举、通道映射、录音和长稳测试。
-- XMOS 第三方源码继续受其原许可证约束；本仓库只记录本板应用、必要补丁和恢复信息。
+## 许可与说明
+
+XMOS 及其他第三方代码继续受各自许可证约束。硬件照片、测试数据与本板应用代码仅用于本项目研发归档；在确认所有第三方授权前，不应将整个仓库直接视为可再许可的完整开源发行版。reSpeaker、Seeed Studio 和 XMOS 名称仅用于兼容性说明与功能对标。

@@ -15,8 +15,10 @@ The device uses 48 kHz, 16-bit, six-channel UAC1 capture. It retains the
 verified zero-delay four-microphone beam algorithm. The four raw references
 are preserved before the beam callback replaces USB channels 1 and 2.
 
-Only load the generated `.xe` through XTAG4 with `xrun --io`. DFU and QSPI
-updates remain disabled in this firmware.
+The archived `.xe` was first verified through XTAG4 with `xrun --io`. On the
+2026-08-30 revised board it was subsequently programmed into a W25Q16JW QSPI
+Flash and passed readback plus cold-boot USB enumeration. USB DFU is not yet
+part of this application, so XTAG4 remains the supported programming path.
 
 ## Verified Build
 
@@ -25,6 +27,11 @@ The binary was loaded through XTAG4 to RAM on 2026-08-11. Windows enumerated
 A 20-second silence recording completed with no clipping or large transient
 events. Beam channels differed by at most two 16-bit LSBs, and all four raw
 reference channels carried PCM data.
+
+The revised board later enumerated without XTAG4 as
+`XU316 4Mic Beam + Raw 6Ch 1` after a full power cycle. QSPI was operated at
+10 MHz; three consecutive 64 KiB readbacks matched the reference image with
+zero byte errors.
 
 | File | SHA256 |
 | --- | --- |
