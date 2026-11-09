@@ -27,6 +27,9 @@
             <Port Location="XS1_PORT_1L"  Name="PORT_MCLK_IN"/>
             <Port Location="XS1_PORT_16B" Name="PORT_MCLK_COUNT"/>
 
+            <!-- X0D32 (bit 2) is the active-low recording LED. Keep X0D33 high. -->
+            <Port Location="XS1_PORT_4E" Name="PORT_LED_RG"/>
+
             <!-- X0D36 drives all PDM clocks. X0D40..43 are P8D bits 4..7. -->
             <Port Location="XS1_PORT_1M" Name="PORT_PDM_CLK"/>
             <Port Location="XS1_PORT_8D" Name="PORT_PDM_DATA"/>

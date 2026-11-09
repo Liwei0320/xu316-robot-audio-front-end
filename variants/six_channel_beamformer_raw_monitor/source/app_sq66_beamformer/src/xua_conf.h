@@ -31,6 +31,7 @@
 #define XUA_LOW_POWER_NON_STREAMING      0
 /* Keep the PDM clock continuous across USB alternate-setting start/stop events. */
 #define SQ66_PDM_ALWAYS_ON_CAPTURE        1
+#define SQ66_RECORD_LED_BLINK             1
 /* Tile 0 uses all eight hardware threads; XUD needs priority mode at 600 MHz. */
 #define XUD_PRIORITY_HIGH                1
 

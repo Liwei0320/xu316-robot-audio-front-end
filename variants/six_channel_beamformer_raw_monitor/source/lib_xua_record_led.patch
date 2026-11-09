@@ -1,0 +1,54 @@
+diff --git a/lib_xua/src/core/audiohub/xua_audiohub.xc b/lib_xua/src/core/audiohub/xua_audiohub.xc
+--- a/lib_xua/src/core/audiohub/xua_audiohub.xc
++++ b/lib_xua/src/core/audiohub/xua_audiohub.xc
+@@ -184,6 +184,15 @@ static inline int HandleSampleClock(int frameCount, buffered _XUA_CLK_DIR port:3
+ #if defined(SQ66_PDM_ALWAYS_ON_CAPTURE) && (SQ66_PDM_ALWAYS_ON_CAPTURE == 1) && \
+     (NUM_USB_CHAN_OUT == 0) && (XUA_LOW_POWER_NON_STREAMING == 0) && \
+     (MIN_FREQ == MAX_FREQ) && (XUA_NUM_PDM_MICS > 0)
++#if defined(SQ66_RECORD_LED_BLINK) && (SQ66_RECORD_LED_BLINK == 1)
++extern "C" {
++void sq66_record_led_write(unsigned lit);
++}
++static unsigned sq66_led_recording = 0;
++static unsigned sq66_led_on = 0;
++static unsigned sq66_led_samples = 0;
++#endif
++
+ static inline unsigned consume_stream_event_without_restarting_audio(
+     chanend ?c_aud,
+     unsigned command)
+@@ -193,14 +202,34 @@ static inline unsigned consume_stream_event_without_restarting_audio(
+         inuint(c_aud); /* DSD mode; unused by this capture-only application. */
+         inuint(c_aud); /* Output resolution; there are no output channels. */
+         outct(c_aud, XS1_CT_END);
++#if defined(SQ66_RECORD_LED_BLINK) && (SQ66_RECORD_LED_BLINK == 1)
++        sq66_led_recording = 1;
++        sq66_led_on = 1;
++        sq66_led_samples = 0;
++        sq66_record_led_write(1);
++#endif
+         return XUA_AUDCTL_NO_COMMAND;
+     }
+     else if(command == XUA_AUD_SET_AUDIO_STOP)
+     {
+         outct(c_aud, XS1_CT_END);
++#if defined(SQ66_RECORD_LED_BLINK) && (SQ66_RECORD_LED_BLINK == 1)
++        sq66_led_recording = 0;
++        sq66_led_on = 0;
++        sq66_led_samples = 0;
++        sq66_record_led_write(0);
++#endif
+         return XUA_AUDCTL_NO_COMMAND;
+     }
+ 
++#if defined(SQ66_RECORD_LED_BLINK) && (SQ66_RECORD_LED_BLINK == 1)
++    if(sq66_led_recording && ++sq66_led_samples >= (XUA_PDM_MIC_FREQ / 4))
++    {
++        sq66_led_samples = 0;
++        sq66_led_on = !sq66_led_on;
++        sq66_record_led_write(sq66_led_on);
++    }
++#endif
+     return command;
+ }
+ #endif

@@ -137,6 +137,8 @@ RK3588 robot controller
 
 SHA-256：`0347F5A8B7EDE4942FD38320193A1D2F6BE11B8810A8450FCA33276DEF2E2B89`
 
+2026-11-09 增加录音指示灯版本：`variants/six_channel_beamformer_raw_monitor/bin/app_six_channel_beam_raw_led_20261109.xe`。X0D32 低电平点亮，USB 录音时以 2 Hz 闪烁，停止后熄灭。相同 LED 功能的先前构建已通过 W25Q16JW 烧录回读、无 XTAG4 冷启动和 20 秒录音指示灯测试；仓库中的 16 Mbit XN 配置版本已通过重新编译，尚未单独烧录验证。原版固件保留用于回退。
+
 ## 运行与录音
 
 开发阶段可使用 XTAG4 从 RAM 运行：

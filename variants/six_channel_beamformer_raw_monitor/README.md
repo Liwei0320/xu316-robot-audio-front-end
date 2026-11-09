@@ -15,6 +15,25 @@ The device uses 48 kHz, 16-bit, six-channel UAC1 capture. It retains the
 verified zero-delay four-microphone beam algorithm. The four raw references
 are preserved before the beam callback replaces USB channels 1 and 2.
 
+The updated source drives X0D32/LED_R low while lit and blinks it at 2 Hz
+only while the USB capture stream is active. X0D33/LED_G remains high.
+Apply `source/lib_xua_record_led.patch` to the already SQ66-patched `lib_xua`
+before building this LED variant. The previously verified `.xe` remains unchanged.
+
+LED build: `bin/app_six_channel_beam_raw_led_20261109.xe`
+SHA-256: `947A24DF384A4AEFDA05B2DB79FFB0E7E9C859F3BF67BBAAD29D2F59B403E70C`
+This binary was rebuilt from the included 16-Mbit XN configuration with XTC
+15.3.1. The build passed; this exact binary has not yet been programmed to
+the board.
+
+On 2026-11-09 the same LED code was tested in a binary built with a 32-Mbit
+XN Flash geometry (`CA570B7D3D26950C199D124F3DA9D11B755F138B9368265D7596357E42C908F6`).
+It was programmed to a W25Q16JW (ID `EF6015`); the generated 64 KiB image
+and Flash readback matched byte-for-byte. With XTAG4 disconnected, the board
+cold-booted as a six-channel USB audio input. A 20-second recording confirmed
+LED_R blinks during capture and turns off at stream stop. The recorded PCM
+was near zero, so microphone audio quality was not evaluated in this LED test.
+
 The archived `.xe` was first verified through XTAG4 with `xrun --io`. On the
 2026-08-30 revised board it was subsequently programmed into a W25Q16JW QSPI
 Flash and passed readback plus cold-boot USB enumeration. USB DFU is not yet
